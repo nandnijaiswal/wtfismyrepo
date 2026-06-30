@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "Stop being lost in a codebase. A CLI + Claude Code skill that builds an import graph, runs PageRank to find the files that hold a repo together, scores fragility from git churn, and reads GitHub PRs/issues to show you exactly where to start.",
   "type": "module",
-  "main": "src/analyze.mjs",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "wtfismyrepo": "bin/wtfismyrepo.mjs"
   },

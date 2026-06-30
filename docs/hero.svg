@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" role="img" aria-label="wtfismyrepo — stop being lost in a codebase">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f78166"/>
+      <stop offset="1" stop-color="#ffd33d"/>
+    </linearGradient>
+    <style>
+      text { font-family: 'Segoe UI', Ubuntu, 'Helvetica Neue', Arial, sans-serif; }
+      .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="360" fill="url(#bg)"/>
+
+  <!-- subtle node-graph motif on the right -->
+  <g opacity="0.5" stroke="#30363d" stroke-width="2" fill="none">
+    <line x1="980" y1="90"  x2="1080" y2="150"/>
+    <line x1="980" y1="90"  x2="900"  y2="170"/>
+    <line x1="1080" y1="150" x2="1020" y2="250"/>
+    <line x1="900" y1="170" x2="1020" y2="250"/>
+    <line x1="900" y1="170" x2="1100" y2="270"/>
+  </g>
+  <g>
+    <circle cx="980"  cy="90"  r="10" fill="#58a6ff"/>
+    <circle cx="1080" cy="150" r="16" fill="#f78166"/>
+    <circle cx="900"  cy="170" r="13" fill="#ffd33d"/>
+    <circle cx="1020" cy="250" r="9"  fill="#3fb950"/>
+    <circle cx="1100" cy="270" r="7"  fill="#58a6ff"/>
+  </g>
+
+  <!-- terminal prompt -->
+  <text x="80" y="120" class="mono" font-size="26" fill="#7d8590">$ <tspan fill="#3fb950">npx</tspan> wtfismyrepo .</text>
+
+  <!-- wordmark -->
+  <text x="78" y="210" font-size="76" font-weight="800" fill="#e6edf3">wtfismyrepo</text>
+  <rect x="80" y="228" width="430" height="6" rx="3" fill="url(#accent)"/>
+
+  <!-- tagline -->
+  <text x="80" y="286" font-size="30" fill="#adbac7">Stop being lost in a codebase.</text>
+  <text x="80" y="324" font-size="20" fill="#7d8590">Import-graph PageRank · git-churn fragility · GitHub PRs &amp; issues → where to start.</text>
+</svg>
