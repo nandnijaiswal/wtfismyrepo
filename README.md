@@ -13,13 +13,31 @@ We've all been there. New repo. `README` three years out of date. 47 top-level f
 
 ---
 
-## Quick start
+## Install as a skill (one command)
+
+Drop it into your Claude Code agent so it loads automatically — no clone, no config:
 
 ```bash
-npx wtfismyrepo          # run it on the repo you're standing in
-# or install it
-npm install -g wtfismyrepo
-wtfismyrepo .
+# straight from GitHub (works today, no npm needed)
+npx github:nandnijaiswal/wtfismyrepo install
+
+# or, once published to npm:
+npx wtfismyrepo install
+```
+
+This copies the skill into `~/.claude/skills/wtfismyrepo/`. Restart Claude Code and just ask *"wtf is this repo"*. Other flavors:
+
+```bash
+npx github:nandnijaiswal/wtfismyrepo install --project   # only this repo (./.claude/skills)
+npx github:nandnijaiswal/wtfismyrepo uninstall           # remove it
+```
+
+> Using Cursor / another agent? Add `@~/.claude/skills/wtfismyrepo/SKILL.md` to your `CLAUDE.md`, `AGENTS.md`, or `.cursorrules`.
+
+## Run the analyzer
+
+```bash
+npx github:nandnijaiswal/wtfismyrepo .     # analyze the repo you're standing in
 ```
 
 ```
