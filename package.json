@@ -1,7 +1,7 @@
 {
   "name": "wtfismyrepo",
   "version": "1.0.0",
-  "description": "Stop being lost in a codebase. A CLI + Claude Code skill that builds an import graph, runs PageRank to find the files that hold a repo together, scores fragility from git churn, and reads GitHub PRs/issues to show you exactly where to start.",
+  "description": "Stop being lost in a codebase. A CLI + Claude Code skill that builds an import graph, runs PageRank to find the files that hold a repo together, scores fragility from git churn, reads GitHub PRs/issues, then uses the ADHD divergent-ideation engine to explain it from the best angle for you.",
   "type": "module",
   "main": "src/index.mjs",
   "exports": {
@@ -28,10 +28,15 @@
     "developer-experience",
     "code-tour",
     "github",
-    "cli"
+    "cli",
+    "adhd",
+    "divergent-ideation"
   ],
   "author": "Nandni Jaiswal (https://github.com/nandnijaiswal)",
   "license": "MIT",
+  "optionalDependencies": {
+    "adhd-agent": "^1.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nandnijaiswal/wtfismyrepo.git"

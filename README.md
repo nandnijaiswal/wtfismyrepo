@@ -7,16 +7,19 @@
 # wtfismyrepo — onboarding for agents & humans
 
 [![CI](https://github.com/nandnijaiswal/wtfismyrepo/actions/workflows/ci.yml/badge.svg)](https://github.com/nandnijaiswal/wtfismyrepo/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-17%20passing-3fb950)](./test)
+[![tests](https://img.shields.io/badge/tests-22%20passing-3fb950)](./test)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](./documentation/install.md)
+[![engine: ADHD](https://img.shields.io/badge/engine-ADHD-blueviolet)](https://github.com/UditAkhourii/adhd)
 [![stars](https://img.shields.io/github/stars/nandnijaiswal/wtfismyrepo?style=flat&color=ffd33d)](https://github.com/nandnijaiswal/wtfismyrepo/stargazers)
 
 > **You just got dropped into a 200k-line codebase. You have no idea what's going on. This fixes that.**
 
 Most "explain my code" tools read the code and stop — but code only tells you *what* exists. The *why*, and the *landmines*, live in the **structure** and the **history**. **wtfismyrepo treats onboarding as a graph problem, not a reading problem** — it builds an import graph, runs **PageRank** to find the files that hold the system together, scores **fragility** from git churn, and reads the **GitHub history** (open PRs = hot zones, issues = pain) to tell you *exactly where to start*.
 
-It ships as both a **CLI/library** (the deterministic engine) and a **Claude Code skill** (the guided, part-by-part explanation).
+Then comes the part most tools get wrong: **the explanation itself.** A single linear walkthrough anchors on whatever angle it happens to start with. So under the hood wtfismyrepo runs the **[ADHD](https://github.com/UditAkhourii/adhd) divergent-ideation engine** — it generates many onboarding angles in parallel (new-grad, archeologist, security-researcher, on-call-at-3am…), with zero cross-talk, then a critic pass scores them, prunes the traps, and deepens the single best angle *for you and your goal*. No premature convergence on "just start at `main()`."
+
+It ships as both a **CLI/library** (the deterministic data engine + ADHD explanation engine) and a **Claude Code skill** (the guided, part-by-part walkthrough).
 
 Reach for it whenever you're **new to a repo**, **lost**, **inheriting legacy code**, or thinking *"where do I even start with this?"*
 
@@ -125,16 +128,23 @@ Using Cursor / Codex / another agent? Add `@~/.claude/skills/wtfismyrepo/SKILL.m
 npx github:nandnijaiswal/wtfismyrepo .          # analyze the repo you're in
 wtfismyrepo . --json                            # machine-readable (what the skill consumes)
 wtfismyrepo ../service --no-history --top 5      # offline, just the top 5
+
+# ADHD-powered explanation (npm install -g adhd-agent to enable the live engine)
+wtfismyrepo explain . --level new-grad --goal "fix a bug"
 ```
 
 **Library:**
 
 ```ts
-import { analyze, renderText } from "wtfismyrepo";
+import { analyze, renderText, buildADHDContext } from "wtfismyrepo";
 
 const report = analyze(".", { history: true, top: 10 });
 console.log(renderText(report));
 // report.importance · report.fragility · report.hotZones · report.entryPoints · report.history
+
+// Hand the analysis to the ADHD engine for a divergent explanation:
+const { problem, context } = buildADHDContext(report, { experience: "new-grad" });
+// → feed to adhd-agent's run(), or paste into a /adhd session
 ```
 
 Full reference: **[documentation/api.md](./documentation/api.md)**.
@@ -143,23 +153,37 @@ Full reference: **[documentation/api.md](./documentation/api.md)**.
 
 ## How it works
 
+Two engines, chained. The **data engine** (deterministic) extracts ground-truth structure; the **ADHD engine** (divergent) turns that into the right explanation.
+
 ```
- files ─► import parser ─► directed import graph ─► PageRank ──┐
-                                                               ├─► importance ranking (the spine)
-   git log ───────────────► per-file churn ───────────────────┤
-                                                               └─► fragility = centrality × churn
-   gh CLI ──► open PRs (hot zones) + issues (pain) ──────────────► where to start
+ ┌─ DATA ENGINE (deterministic) ────────────────────────────────────────┐
+ │ files ─► import parser ─► directed import graph ─► PageRank ──┐       │
+ │                                                               ├─ spine│
+ │   git log ──────────────► per-file churn ────────────────────┤       │
+ │                                                               └─ fragility = centrality × churn
+ │   gh CLI ──► open PRs (hot zones) + issues (pain) ────────────► where to start
+ └──────────────────────────────────┬───────────────────────────────────┘
+                                     │  (analysis as ADHD problem + context)
+                                     ▼
+ ┌─ ADHD ENGINE (divergent) — github.com/UditAkhourii/adhd ──────────────┐
+ │  DIVERGE  N onboarding frames in parallel, zero cross-talk            │
+ │  SCORE    novelty / viability / fit + trap detection                  │
+ │  CLUSTER  group angles by underlying approach                         │
+ │  DEEPEN   the non-obvious best angle → full walkthrough for *you*     │
+ └───────────────────────────────────────────────────────────────────────┘
 ```
 
+**Data engine:**
 1. **Scan** — list git-tracked files (respects `.gitignore`), read parseable sources (JS/TS/JSX/Python/Go).
 2. **Graph** — parse real `import` / `require` / `from` statements, resolve to internal files, build a who-depends-on-whom graph.
 3. **PageRank** — power iteration with damping + dangling-node handling. High rank = the spine.
 4. **Churn** — `git log` change-frequency per file.
 5. **Fragility** — `normalize(centrality) × normalize(churn)`. Central *and* churned = handle with care.
 6. **History** — `gh` pulls open PRs (→ hot zones), merged PRs (→ conventions), issues (→ pain & good-first-issues).
-7. **Report** — terminal or `--json`, ending in a concrete *"Your first move."*
 
-The engine is [tested](./test) (PageRank correctness, import parsing, scoring, install) and runs in CI on Node 18 / 20 / 22. Deep dive: **[documentation/how-it-works.md](./documentation/how-it-works.md)**.
+**ADHD engine** ([UditAkhourii/adhd](https://github.com/UditAkhourii/adhd), MIT) — `wtfismyrepo explain` packages the analysis as an ADHD problem + context, then runs the **diverge → score → cluster → deepen** loop so the explanation is chosen from many parallel angles instead of anchoring on the first one. Without `adhd-agent` installed, the CLI prints the formatted ADHD prompt; the [skill](./SKILL.md) runs the same loop with Claude as the generator.
+
+The engine is [tested](./test) (PageRank correctness, import parsing, scoring, install, ADHD context-building) and runs in CI on Node 18 / 20 / 22. Deep dive: **[documentation/how-it-works.md](./documentation/how-it-works.md)**.
 
 ---
 
@@ -219,8 +243,12 @@ Found a repo where the spine ranking looks wrong, or a language it should parse?
 
 ---
 
+## Credits
+
+The explanation layer is powered by **[ADHD — Parallel Divergent Ideation for Coding Agents](https://github.com/UditAkhourii/adhd)** by [Udit Akhouri](https://github.com/UditAkhourii) (MIT). wtfismyrepo adapts ADHD's diverge→score→cluster→deepen engine and frame-based generation for the codebase-onboarding problem — see [`src/onboarding-frames.mjs`](./src/onboarding-frames.mjs) and [`src/explain.mjs`](./src/explain.mjs). The cognitive-frame design and the generator/critic split are ADHD's; the codebase-specific frames and the analysis→problem mapping are this project's.
+
 ## License
 
 MIT © [Nandni Jaiswal](https://github.com/nandnijaiswal)
 
-The deterministic engine lives in [`src/`](./src); the runnable skill is [`SKILL.md`](./SKILL.md). Go forth and stop being lost.
+The deterministic data engine lives in [`src/`](./src); the ADHD explanation layer in [`src/explain.mjs`](./src/explain.mjs) + [`src/onboarding-frames.mjs`](./src/onboarding-frames.mjs); the runnable skill is [`SKILL.md`](./SKILL.md). Go forth and stop being lost.

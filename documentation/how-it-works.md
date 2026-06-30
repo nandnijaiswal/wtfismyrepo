@@ -44,6 +44,24 @@ Via the `gh` CLI (best-effort, degrades gracefully if missing):
 ### 7. Report (`src/report.mjs`)
 Everything is assembled into a terminal report — or `--json` for the skill/other tooling — that ends with a concrete **"Your first move."**
 
+## The explanation layer: the ADHD engine
+
+Steps 1–7 produce *data*. Turning data into a good explanation is a separate, harder problem — and the naive approach (one linear summary) anchors on whatever angle it starts with.
+
+wtfismyrepo's `explain` command and skill use the **[ADHD](https://github.com/UditAkhourii/adhd) divergent-ideation engine** (MIT, by Udit Akhouri) for this. The analysis object is formatted by [`src/explain.mjs`](../src/explain.mjs) into an ADHD `problem` + `context`:
+
+- **problem**: *"How should I explain and onboard a developer onto `<repo>`?"* (plus their level + goal)
+- **context**: the full structural intelligence — entry points, spine, fragility, hot zones, issues
+
+ADHD then runs its loop:
+
+1. **Diverge** — generate onboarding angles in parallel under different cognitive frames ([`src/onboarding-frames.mjs`](../src/onboarding-frames.mjs): new-grad, archeologist, security-researcher, on-call-at-3am, refactorer, inversion…). No cross-talk, so no premature convergence.
+2. **Score** — each angle rated on novelty / viability / fit; traps (angles that look helpful but waste time) flagged.
+3. **Cluster** — group surviving angles by underlying approach.
+4. **Deepen** — expand the non-obvious best angle into a full walkthrough grounded in the real files.
+
+If `adhd-agent` is installed, `wtfismyrepo explain` runs this for real; otherwise it prints the formatted ADHD prompt. The [SKILL.md](../SKILL.md) runs the identical loop with Claude itself as the generator and critic — so the skill works with zero extra dependencies.
+
 ## Why the skill matters too
 
-The CLI gives Claude ground-truth instead of guesses. The [SKILL.md](../SKILL.md) then teaches Claude to explain that data **one layer at a time**, at the developer's level, citing real files — instead of dumping the whole tree at once.
+The CLI gives Claude ground-truth instead of guesses. The skill then runs the ADHD diverge→score→deepen loop to pick the *best* explanation angle for the specific developer, and delivers it **one layer at a time**, citing real files — instead of dumping the whole tree at once.

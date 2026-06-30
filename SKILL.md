@@ -1,158 +1,164 @@
 ---
 name: wtfismyrepo
-description: Onboarding companion that explains an unfamiliar codebase to a developer who just got dropped into it. Use this skill whenever someone is new to a repo, lost in a codebase, doing onboarding, or asks any of: "where do I start", "how does this work", "explain this repo", "what is going on here", "I'm new to this codebase", "walk me through", "give me a tour", "where is X handled", "what breaks if I touch this", "what should I work on first", "how do I run this", "what are the main parts", "trace this request", "onboard me", "ramp up", "understand this project". This skill reads the codebase AND its GitHub history (open PRs, closed PRs, active issues) to reconstruct intent, then explains the system part-by-part at the developer's level. Trigger aggressively whenever confusion about an existing codebase is expressed.
+description: Onboarding companion that explains an unfamiliar codebase using the ADHD diverge→score→deepen engine (github.com/UditAkhourii/adhd). Use whenever someone is new to a repo, lost in a codebase, or asks: "where do I start", "how does this work", "explain this repo", "I'm new to this codebase", "walk me through", "give me a tour", "what is going on here", "where is X handled", "what breaks if I touch this", "what should I work on first", "how do I run this", "trace this request", "onboard me", "ramp up", "understand this project", "wtf is this". Trigger aggressively on any codebase confusion.
 ---
 
-# wtfismyrepo: Stop Being Lost in a Codebase
+# wtfismyrepo skill
 
-**Core principle**: A repo is not just code — it's the frozen output of hundreds of decisions. The code tells you *what* exists. The PRs, issues, and commit history tell you *why* it exists and *what hurts*. To truly understand a codebase, read both. Then explain it the way you'd want it explained to you on day one: concretely, in order, and at the right altitude.
-
-This skill turns Claude into the senior engineer who sits next to a new dev and says: *"Okay, here's what this thing actually does, here's where to start reading, and here's the part everyone gets confused by."*
-
----
-
-## When to Trigger This Skill
-
-- A developer is **new to a repository** (open source, new job, inherited project)
-- Someone says they are **lost, confused, or don't know where to start**
-- A request to **explain, tour, walk through, or map** a codebase
-- Questions like **"how does X work in this repo"** or **"where is Y handled"**
-- Figuring out **what to work on first** (good-first-issue hunting)
-- Understanding **blast radius**: "what breaks if I change this?"
-- **Tracing a request/data flow** end to end through unfamiliar code
-
-**Trigger keywords**: onboard, onboarding, ramp up, new to repo, lost, confused, where do I start, explain this repo, walk me through, give me a tour, how does this work, what is this, trace this, where is X handled, what breaks if, good first issue, understand the codebase, get up to speed.
+**Engine**: ADHD diverge→score→cluster→deepen loop (MIT, [github.com/UditAkhourii/adhd](https://github.com/UditAkhourii/adhd))
+**Data layer**: wtfismyrepo deterministic analysis — import-graph PageRank, git-churn fragility, GitHub PR/issue signals
 
 ---
 
-## The Method: Six Passes
+## How this skill works
 
-Do NOT dump the whole repo on the developer. Understanding is built in layers, from the outside in. Work these passes **in order**. Each pass produces output the developer can absorb before the next.
+Most "explain my code" approaches are linear: read the code, summarize it, done. That anchors on whatever angle the first pass happens to take.
 
-> **Tooling note**: This skill ships with a deterministic analysis engine — run it FIRST to get hard data, then use your judgment to explain it:
-> ```bash
-> npx wtfismyrepo . --json    # import-graph PageRank, fragility scores, hot zones, entry points
-> ```
-> The `--json` output gives you ranked central files (the spine), fragility scores (git-churn × centrality), entry points, and GitHub hot zones without guessing. Use it to ground every pass below. Then use the `gh` CLI for deeper PR/issue reading and file tools for the code itself. If `gh` is unavailable, say so and fall back to local git history (`git log`, `git blame`) — never silently skip the history passes; they are where the real understanding lives.
+**This skill treats codebase onboarding as an ideation problem** using the ADHD two-phase architecture:
 
----
+1. **DIVERGE** — Generate N independent onboarding angles under deliberately different cognitive frames (new-grad, archeologist, security researcher, on-call engineer…). Zero cross-talk between frames during generation so no anchoring.
+2. **SCORE → CLUSTER → DEEPEN** — A critic pass scores each angle for this developer's situation (novelty to them, viability for their goal, fit to the codebase's actual complexity). Cluster angles by underlying approach. Deepen the best one into a full walkthrough.
 
-### Pass 1 — Recon: What even is this thing? (5 minutes)
-
-Goal: one-paragraph answer to "what is this repo and what stack is it."
-
-1. Read `README.md`, `CONTRIBUTING.md`, `docs/`, and any `ARCHITECTURE.md` / `DESIGN.md`.
-2. Read the manifest(s): `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `Gemfile`, etc. — these reveal language, framework, scripts, and dependencies.
-3. Detect the project type (web app, CLI, library, service, monorepo) and how it's run/tested/built (the `scripts`/`Makefile`/CI config).
-4. Note the license and rough size/activity (last commit, star count, open issue count via `gh repo view`).
-
-**Deliverable to the dev**: 3–5 sentences — *"This is a `<type>` written in `<lang>` using `<framework>`. You run it with `<command>`. It does `<one-line purpose>`."*
+The hard data (entry points, spine, fragility, hot zones) comes from `wtfismyrepo --json`. The ADHD loop decides *how to explain it* given who's asking and why.
 
 ---
 
-### Pass 2 — The Map: Territory and entry points (10 minutes)
+## Step 0 — Get the hard data first
 
-Goal: a mental map of the directory structure and where execution begins.
-
-1. Generate a pruned directory tree (ignore `node_modules`, `vendor`, `dist`, `.git`, build artifacts).
-2. Identify **entry points**: `main`, `index`, `app`, `cmd/`, server bootstrap, CLI root, the route table, or the framework's convention.
-3. Label each top-level directory with its *responsibility* in one line ("`/api` — HTTP handlers", "`/core` — domain logic", "`/db` — persistence").
-4. Find the **config and environment**: env vars, config files, feature flags, secrets handling.
-
-**Deliverable to the dev**: An annotated tree + "Execution starts here → `path/to/entry`" + the 3–4 directories that matter most.
-
----
-
-### Pass 3 — The Spine: Trace one real path end-to-end (15 minutes)
-
-Goal: connect the boxes. Pick the single most representative flow (the primary HTTP request, the main CLI command, the core job) and trace it through every layer.
-
-1. Start at the entry point, follow the call into routing → handler → business logic → data layer → response.
-2. Name the key abstractions encountered (the central model, the service class, the main interface).
-3. Note where state lives and what the source of truth is.
-
-**Deliverable to the dev**: A numbered, file-linked trace — *"1. Request hits `routes.ts:42` → 2. dispatched to `UserController.create` → 3. validated in … → 4. persisted via …"*. This single trace teaches the architecture better than any diagram.
-
----
-
-### Pass 4 — The History: Read the PRs and issues (15 minutes)
-
-**This is the pass that makes this skill different.** Code shows the present; history shows the trajectory and the pain.
-
-1. **Open PRs** (`gh pr list --state open`): What is *actively changing right now?* These are the hot zones — touching them risks merge conflicts and means the design is in flux. Summarize the themes.
-2. **Recently merged PRs** (`gh pr list --state merged --limit 30`): How did the code get to its current shape? What patterns do reviewers enforce? Read 3–5 substantial ones to learn the team's conventions and review culture.
-3. **Open issues** (`gh issue list --state open`): Where does it hurt? Bugs cluster in fragile modules. Feature requests reveal the roadmap. Labels like `good first issue` / `help wanted` are gold for a newcomer.
-4. **Closed issues** for a target area: how were similar problems solved before? Avoid re-litigating settled decisions.
-
-**Deliverable to the dev**: *"Hot zones (avoid surprising people): … . Fragile areas (bugs cluster here): … . The team cares about: … . Good place for you to start: issue #NNN."*
-
----
-
-### Pass 5 — The Explanation: Part-by-part, at their level (ongoing)
-
-Now teach. Calibrate to the developer — ask their experience level and goal if unknown ("fixing a bug? adding a feature? just understanding?").
-
-Rules for explaining:
-- **One part at a time.** Never dump. Explain a component, check understanding, then go deeper or move on.
-- **Always link to real files** (`path/to/file.ext:line`) so they can read along.
-- **Use analogies for unfamiliar patterns**, but ground every analogy back in the actual code.
-- **Explain the "why," not just the "what"** — pull the reasoning from the PR/issue history found in Pass 4.
-- **Surface the traps**: the counterintuitive bits, the "looks unused but isn't," the global that everything depends on.
-
----
-
-### Pass 6 — The Launchpad: Where do YOU start? (the payoff)
-
-End every onboarding with a concrete, personalized next action:
-
-1. **A first file to read** to go one level deeper than the tour.
-2. **A first safe change** — a low-blast-radius `good first issue` or a tiny improvement, with the exact files involved.
-3. **The blast-radius warning**: "Before you touch `X`, know that `A`, `B`, and `C` depend on it."
-4. **Who/what to ask** — the CODEOWNERS, the most active reviewer, the relevant doc.
-
-**Deliverable**: A short, confidence-building "Your first move" section. The dev should close the session knowing *exactly* what to do next instead of staring at the file tree.
-
----
-
-## Anti-Patterns (do NOT do these)
-
-- ❌ **Dumping the entire structure** in one giant message. Layer it.
-- ❌ **Explaining code without history.** A function's *why* lives in its PR, not its body.
-- ❌ **Generic explanations** that could apply to any repo. Always cite this repo's actual files and decisions.
-- ❌ **Skipping the "where do I start"** payoff. A lost dev needs a first step, not a lecture.
-- ❌ **Assuming the README is current.** Verify claims against the code; flag drift.
-
----
-
-## Quick Command Reference
+Before any explanation, run the deterministic engine to get ground-truth:
 
 ```bash
-# Recon
-gh repo view --json name,description,languages,stargazerCount,updatedAt
-cat README.md package.json   # or pyproject.toml / go.mod / Cargo.toml
+wtfismyrepo . --json --no-color    # full analysis: PageRank, churn, history
+# or from GitHub without a local clone:
+npx github:nandnijaiswal/wtfismyrepo . --json --no-color
+```
 
-# Map
-git ls-files | head -100      # tracked files, ignores build junk
+If the CLI is unavailable, use these tools directly:
+- `gh repo view --json name,description,languages`
+- `gh pr list --state open --json number,title,files`
+- `gh issue list --state open --label "good first issue"`
+- `git log --pretty=format: --name-only | sort | uniq -c | sort -rg | head -20`
+- File read + import parsing for the dependency graph (manual)
 
-# History (the secret sauce)
-gh pr list --state open --limit 30
-gh pr list --state merged --limit 30
-gh issue list --state open --label "good first issue"
-gh issue list --state open --label "bug"
+Store the JSON. Every explanation you give should be anchored to it — not guessed.
 
-# Blast radius for a file/symbol
-git log --oneline -- path/to/file       # how often it changes
-grep -rn "SymbolName" --include=*.ext .  # who depends on it
+---
+
+## Step 1 — DIVERGE: generate onboarding angles across frames
+
+**This is the ADHD diverge phase.** Run each frame as a **separate, isolated** reasoning thread. Do NOT let one frame's output influence another while generating. No evaluation during generation — pure ideation only.
+
+For each frame below, generate 3–5 distinct onboarding angles: different ways of *entering* and *explaining* this codebase. Each angle is one sentence describing the approach.
+
+### The onboarding frames (select 4–6 per run, always include one wild)
+
+| Frame | Vantage point |
+|---|---|
+| **New grad, day one** | 5-word mental model + the single file to open first |
+| **Archeologist** | The git history / closed PRs / old issues: what decisions were made and reversed? |
+| **Security researcher** | Trust boundaries, data flows, attack surfaces |
+| **CTO doing due diligence** | Blast radius, technical debt, single points of failure |
+| **On-call at 3am** | Failure modes, runbooks, diagnostic entry points |
+| **Product manager** | Trace user value, not code paths |
+| **Refactorer** | The coupling graph — what depends on what before touching anything |
+| **Data engineer** | Sources → transforms → sinks → state stores |
+| **Performance engineer** | Hot paths, latency budget, N+1 queries, blocking I/O |
+| **Inversion** *(wild)* | Work backwards from failure modes — what failures tell you what the system actually is |
+| **Domain expert** | The business entities and invariants that exist regardless of implementation |
+| **Contrarian** *(wild)* | Where the code is wrong or weird — often faster to understand than where it's right |
+
+**Diverge output format** (per frame, before any scoring):
+```
+Frame: [label]
+Angles:
+- [one sentence: a distinct way to enter/explain this codebase from this vantage]
+- ...
 ```
 
 ---
 
-## The One-Liner That Should Always Be Answerable
+## Step 2 — SCORE each angle
 
-After running this skill, the developer should be able to finish these three sentences about the repo:
+**Critic phase.** Now evaluate every generated angle on three axes:
+
+| Axis | Definition | Weight |
+|---|---|---|
+| **Novelty** | Distance from "start at `main()` and read down" — does this surface something the dev wouldn't find on their own? | 35% |
+| **Viability** | Can this angle be fully executed with the data we have? Is it concrete, not vague? | 40% |
+| **Fit** | Does this match *this developer's* stated goal and experience level? | 25% |
+
+For each angle, also flag **traps**: onboarding approaches that *look* helpful but waste the developer's time — e.g., "read all the tests first" when there are 800 tests and none document the domain model; "trace the codebase top-down" when the codebase has no clear entry point.
+
+Score format:
+```
+Angle: [text]
+  Novelty: N/10 — [one clause]
+  Viability: N/10 — [one clause]
+  Fit: N/10 — [one clause]
+  Total: N.N
+  Trap: [if applicable, one-line reason] | CLEAN
+```
+
+---
+
+## Step 3 — CLUSTER
+
+Group the top (non-trap) angles by their **underlying approach**, not surface keywords. Name the cluster by the strategy, e.g.:
+- "Follow-the-data plays" (data engineer, performance engineer angles)
+- "Read-the-history plays" (archeologist, contrarian angles)
+- "Blast-radius-first plays" (CTO, on-call, refactorer angles)
+- "User-value plays" (PM, domain expert angles)
+
+Report: cluster label → angles in it.
+
+---
+
+## Step 4 — NON-OBVIOUS PICK + DEEPEN
+
+Select the highest `novelty × viability` scorer (not just the highest total — the goal is to escape the obvious). This is the **non-obvious pick**.
+
+Then deepen it:
+1. **Sketch** — exactly how to execute this onboarding angle on *this* codebase (4–8 sentences, cite real files from the analysis data).
+2. **Load-bearing risk** — what makes this approach fail (e.g., "only works if the git history is informative; shallow clones break it").
+3. **First concrete step** — the exact file to open or command to run.
+4. **Child angles** — 3–5 variations or combinations with other frames that this approach unlocks.
+
+---
+
+## Step 5 — DELIVER the walkthrough
+
+Execute the deepened winning angle as an actual onboarding walkthrough. Ground every statement in the wtfismyrepo data:
+
+- **Always link to real files** (`path/to/file.ext:line` where known).
+- **Cite the history** — pull reasoning from PR/issue data, not invented.
+- **One layer at a time** — explain one component, check understanding, then go deeper.
+- **Surface the traps** — flag the winning angles the developer should skip, and why.
+
+**End every session with "Your first move":**
+1. The exact file to open.
+2. The exact first safe change or issue to pick up.
+3. The blast-radius warning: "Before touching `X`, know that `A` and `B` depend on it."
+
+---
+
+## The three questions that must be answerable after this skill runs
 
 1. **"This system exists to ______, and it works by ______."**
 2. **"If I need to change ______, I start in `______` and watch out for ______."**
-3. **"The riskiest/most fragile part of this codebase is ______, because ______."**
+3. **"The riskiest/most fragile part is ______, because ______."**
 
-If they can't, you haven't finished. Go deeper.
+If the developer can't finish these sentences, the skill hasn't finished. Go deeper.
+
+---
+
+## Anti-patterns (do NOT do these)
+
+- ❌ **Single-frame explanation** — pick one angle and explain. Run the diverge pass.
+- ❌ **Explaining code without the data** — run the CLI first. No guessing at structure.
+- ❌ **Dumping the whole directory tree** — one layer at a time.
+- ❌ **Skipping "Your first move"** — a lost dev needs a first step, not a lecture.
+- ❌ **Letting frames cross-contaminate during generation** — diverge is isolated, critic is separate.
+
+---
+
+*Engine: ADHD parallel divergent ideation framework, MIT license, by Udit Akhouri ([github.com/UditAkhourii/adhd](https://github.com/UditAkhourii/adhd)). Data layer: wtfismyrepo by Nandni Jaiswal ([github.com/nandnijaiswal/wtfismyrepo](https://github.com/nandnijaiswal/wtfismyrepo)).*
